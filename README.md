@@ -13,7 +13,7 @@ Then, create the docker VM using:
     docker create \
         -v backtab:/srv/backtab \
         -p 4903:4903 \
-        -e TAB_DATA_REPO=git@github.com:0x20/tab-data \
+        -e TAB_DATA_REPO=git@github.com:arnocornette/tab-data \
         -e TEST_MODE=1 \
         --name backtab \
         --init \
