@@ -1,12 +1,9 @@
-from backtab.config.util import backtab_config
 from backtab.server import api
 from backtab.data_repo import REPO_DATA
-import time
 
 
 @api.get("/accounts")
 def accounts():
-    time.sleep(backtab_config.slowdown)
     return {
         name: {
             "display_name": member.display_name,
@@ -17,3 +14,9 @@ def accounts():
         }
         for name, member in REPO_DATA.accounts.items()
     }
+
+
+@api.route("/accounts/<account_name>")
+def get_account(account_name: str):
+    # TODO: Implement functionality
+    return f"Not implemented {account_name}"
