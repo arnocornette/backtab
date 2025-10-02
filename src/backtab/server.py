@@ -2,8 +2,9 @@ import bottle
 import click
 import decimal
 import sdnotify
-from backtab.config import SERVER_CONFIG
-from backtab.config import backtab_config
+from flask import Flask
+from backtab.config.util import SERVER_CONFIG
+from backtab.config.util import backtab_config
 from backtab import data_repo
 from backtab.data_repo import REPO_DATA, UpdateFailed
 from functools import wraps
@@ -11,10 +12,12 @@ import typing
 import traceback
 import time
 
-api = bottle.Bottle()
+# Stop using Bottle
+# api = bottle.Bottle()
+api = Flask(__name__)
 
 
-@bottle.get("/ping")
+@api.get("/ping")
 def ping():
     return "ok"
 
