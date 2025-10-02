@@ -1,9 +1,10 @@
-from bottle import get
-from backtab.config import backtab_config
+from backtab.config.util import backtab_config
+from backtab.server import api
+from backtab.data_repo import REPO_DATA
 import time
 
 
-@get("/accounts")
+@api.get("/accounts")
 def accounts():
     time.sleep(backtab_config.slowdown)
     return {

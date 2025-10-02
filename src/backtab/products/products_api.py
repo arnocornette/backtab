@@ -3,14 +3,13 @@
 # get
 # add
 
-from bottle import Bottle, get
+from bottle import Bottle
 from backtab.config import SERVER_CONFIG
+from backtab.data_repo import REPO_DATA
 import time
 
-products_api = Bottle()
 
-
-@get("/products")
+@products_api.get("/products")
 def products():
     time.sleep(SERVER_CONFIG.SLOWDOWN)
     return {
