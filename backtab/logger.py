@@ -15,4 +15,4 @@ structlog.configure(
     logger_factory=structlog.PrintLoggerFactory(),
     cache_logger_on_first_use=False,
 )
-log = structlog.get_logger()  # pyright: ignore[reportAny] as this is not Any (generates and returns a proxy)
+log: structlog.stdlib.BoundLogger = structlog.get_logger()  # pyright: ignore[reportAny] as this is not Any (generates and returns a proxy)
