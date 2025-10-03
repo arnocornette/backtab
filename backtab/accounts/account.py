@@ -1,7 +1,7 @@
 from beancount.core.inventory import Inventory
 
 
-class Account:
+class BacktabAccount:
     account_name: str
     display_name: str
     pin: int
