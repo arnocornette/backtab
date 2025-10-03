@@ -1,33 +1,22 @@
 import click
 import decimal
-from flask import Flask
 from backtab import data_repo
+from backtab.admins.admin_api import admin_router
 from backtab.config import SERVER_CONFIG
 from backtab.data_repo import REPO_DATA, UpdateFailed
 from functools import wraps
 import typing
-import traceback
-import time
-import bottle
+from fastapi import FastAPI
 
 # Stop using Bottle
 # api = bottle.Bottle()
-api = Flask(__name__)
+api = FastAPI()
+api.include_router(admin_router)
 
 
 @api.get("/ping")
 def ping():
     return "ok"
-
-
-@api.get("/admin/update")
-def update():
-    time.sleep(SERVER_CONFIG.SLOWDOWN)
-    try:
-        REPO_DATA.pull_changes()
-        return "Success"
-    except UpdateFailed:
-        raise Exception()
 
 
 def json_txn_method(fn: typing.Callable[[typing.Dict], data_repo.Transaction]):
