@@ -9,4 +9,5 @@ venv
 build
 dist
 /result
-test/
+test_data/
+config.json
