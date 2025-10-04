@@ -1,48 +1,47 @@
-import typing
 import os.path
+from json import JSONDecodeError, load
+from backtab.logger import log
+
+required_keys = ["data", "host", "port", "remote_url", "clone_url"]
+config_file = os.getenv("CONFIG_FILE", "config.json")
 
 
-def get_path(object, *args, default=None):
-    for arg in args[:-1]:
-        object = object.get(arg, {})
-    return object.get(args[-1], default)
-
-
-class ConfigData:
+class BacktabConfig:
     DATA_DIR: str = os.path.join(os.getcwd(), "../data/mut_data")
-    PORT: int = 80
     LISTEN_ADDR: str = "localhost"
     SLOWDOWN: float = 0.1
     EVENT_MODE: bool = False
+    data: str = ""
+    host: str = "localhost"
+    port: int = 8000
+    remote_url: str = ""
+    clone_url: str = ""
 
-    def load_from_config(self, configPath: str):
-        import yaml
+    def __init__(
+        self, data_path: str, host: str, port: int, remote_url: str, clone_url: str
+    ) -> None:
+        self.data = os.path.join(os.getcwd(), data_path)
+        self.host = host
+        self.port = port
+        self.remote_url = remote_url
+        self.clone_url = clone_url
 
-        with open(configPath, "rt") as configFile:
-            config = yaml.load(configFile, Loader=yaml.SafeLoader)
-            self.DATA_DIR = get_path(config, "datadir", default=self.DATA_DIR)
-            self.PORT = get_path(config, "http", "port", default=self.PORT)
-            self.LISTEN_ADDR = get_path(
-                config, "http", "listen", default=self.LISTEN_ADDR
+
+def load_from_config(configPath: str) -> BacktabConfig:
+    try:
+        with open(configPath) as file:
+            config: dict[str, str] = load(file)  # pyright: ignore[reportAny]
+            return BacktabConfig(
+                config["data"],
+                config["host"],
+                int(config["port"]),
+                config["remote_url"],
+                config["clone_url"],
             )
-            self.SLOWDOWN = get_path(config, "slowdown", default=self.SLOWDOWN)
-            self.EVENT_MODE = get_path(config, "event_mode", default=self.EVENT_MODE)
-
-        print(
-            "Config:\n"
-            "  DATA_DIR: %(DATA_DIR)s\n"
-            "  PORT: %(PORT)s\n"
-            "  LISTEN_ADDR: %(LISTEN_ADDR)s\n"
-            "  SLOWDOWN: %(SLOWDOWN)s\n"
-            "  EVENT_MODE: %(EVENT_MODE)s\n"
-            % dict(
-                DATA_DIR=self.DATA_DIR,
-                PORT=self.PORT,
-                LISTEN_ADDR=self.LISTEN_ADDR,
-                SLOWDOWN=self.SLOWDOWN,
-                EVENT_MODE=self.EVENT_MODE,
-            )
-        )
+    except JSONDecodeError as json_error:
+        log.error(f"Error decoding/loading BacktabConfig file {json_error}")
+        raise Exception()
 
 
-SERVER_CONFIG = ConfigData()
+APP_CONFIG = load_from_config(config_file)
+SERVER_CONFIG = load_from_config(config_file)

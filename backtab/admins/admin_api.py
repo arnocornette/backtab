@@ -1,13 +1,15 @@
 # Admin
 #
-from backtab.server import api
-from backtab.data_repo import UpdateFailed
-from backtab.utils.git import get_or_pull_repo
+from fastapi import APIRouter
+
+admin_router = APIRouter()
 
 
-@api.get("/admin/update")
+@admin_router.get("/admin/update")
 def update():
-    try:
-        return get_or_pull_repo()
-    except UpdateFailed:
-        raise Exception()
+    pass
+
+
+@admin_router.get("/admin/push")
+def push():
+    return f""

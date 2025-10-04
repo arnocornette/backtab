@@ -3,15 +3,12 @@
 # get
 # add
 
-from backtab.data_repo import REPO_DATA
-from backtab.server import api
+from backtab.data.backtab_repo import backtab_repo
+from fastapi import APIRouter
+
+products_router = APIRouter()
 
 
-@api.get("/products")
+@products_router.get("/products")
 def products():
-    return {
-        name: product.to_json()
-        for name, product in filter(
-            lambda item: item[1].visible, REPO_DATA.products.items()
-        )
-    }
+    return backtab_repo.products

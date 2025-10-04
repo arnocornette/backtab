@@ -1,89 +1,71 @@
-import click
-import decimal
-from backtab import data_repo
 from backtab.admins.admin_api import admin_router
-from backtab.config import SERVER_CONFIG
-from backtab.data_repo import REPO_DATA, UpdateFailed
-from functools import wraps
-import typing
+from backtab.data_repo import REPO_DATA
 from fastapi import FastAPI
 
-# Stop using Bottle
-# api = bottle.Bottle()
+from backtab.products.products_api import products_router
+from backtab.utils.git import pull_data
+
 api = FastAPI()
 api.include_router(admin_router)
+api.include_router(products_router)
+# def json_txn_method(fn: typing.Callable[[typing.Dict], data_repo.Transaction]):
+#     @wraps(fn)
+#     def result():
+#         member_deltas = REPO_DATA.apply_txn(txn)
+#         return {
+#             "members": {
+#                 member.internal_name: {
+#                     "balance": str(-member.balance_eur),
+#                     "items": member.item_count,
+#                 }
+#                 for member in member_deltas
+#             },
+#             "message": txn.beancount_txn.narration
+#             + (
+#                 " (and now has €%s)" % (-txn.primary_account.balance_eur,)
+#                 if txn.primary_account is not None
+#                 else ""
+#             ),
+#         }
+#
+#     return result
 
 
-@api.get("/ping")
-def ping():
-    return "ok"
+# @api.post("/txn/deposit")
+# @json_txn_method
+# def deposit(json):
+#     return data_repo.DepositTxn(
+#         member=REPO_DATA.accounts[json["member"]],
+#         amount=decimal.Decimal(json["amount"]),
+#     )
+#
+#
+# @api.post("/txn/xfer")
+# @json_txn_method
+# def transfer(json):
+#     return data_repo.TransferTxn(
+#         payer=REPO_DATA.accounts[json["payer"]],
+#         payee=REPO_DATA.accounts[json["payee"]],
+#         amount=decimal.Decimal(json["amount"]),
+#     )
+#
+#
+# @api.post("/txn/buy")
+# @json_txn_method
+# def buy(json):
+#     return data_repo.BuyTxn(
+#         buyer=REPO_DATA.accounts[json["member"]],
+#         products=[
+#             (REPO_DATA.products[product], count)
+#             for product, count in json["products"].items()
+#         ],
+#     )
+#
 
 
-def json_txn_method(fn: typing.Callable[[typing.Dict], data_repo.Transaction]):
-    @wraps(fn)
-    def result():
-        txn = fn(bottle.request.json)
-        member_deltas = REPO_DATA.apply_txn(txn)
-        return {
-            "members": {
-                member.internal_name: {
-                    "balance": str(-member.balance_eur),
-                    "items": member.item_count,
-                }
-                for member in member_deltas
-            },
-            "message": txn.beancount_txn.narration
-            + (
-                " (and now has €%s)" % (-txn.primary_account.balance_eur,)
-                if txn.primary_account is not None
-                else ""
-            ),
-        }
-
-    return result
-
-
-@api.post("/txn/deposit")
-@json_txn_method
-def deposit(json):
-    return data_repo.DepositTxn(
-        member=REPO_DATA.accounts[json["member"]],
-        amount=decimal.Decimal(json["amount"]),
-    )
-
-
-@api.post("/txn/xfer")
-@json_txn_method
-def transfer(json):
-    return data_repo.TransferTxn(
-        payer=REPO_DATA.accounts[json["payer"]],
-        payee=REPO_DATA.accounts[json["payee"]],
-        amount=decimal.Decimal(json["amount"]),
-    )
-
-
-@api.post("/txn/buy")
-@json_txn_method
-def buy(json):
-    return data_repo.BuyTxn(
-        buyer=REPO_DATA.accounts[json["member"]],
-        products=[
-            (REPO_DATA.products[product], count)
-            for product, count in json["products"].items()
-        ],
-    )
-
-
-@click.command()
-@click.option(
-    "-c",
-    "--config-file",
-    default="config.yml",
-    type=click.Path(dir_okay=False, resolve_path=True, exists=True),
-)
-def main(config_file):
+def main():
     # Load config
-    SERVER_CONFIG.load_from_config(config_file)
+    pull_data()
     REPO_DATA.pull_changes()
 
 
