@@ -2,7 +2,7 @@ from backtab.server import api
 from backtab.data_repo import REPO_DATA
 
 
-@api.get("/accounts")
+@api.get("/members")
 def accounts():
     return {
         name: {
@@ -16,7 +16,7 @@ def accounts():
     }
 
 
-@api.route("/accounts/<account_name>")
+@api.get("/members/<account_name>")
 def get_account(account_name: str):
     # TODO: Implement functionality
     return f"Not implemented {account_name}"
