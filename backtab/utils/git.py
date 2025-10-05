@@ -4,6 +4,8 @@ from backtab.config import APP_CONFIG
 from backtab.logger import log
 from pathlib import Path
 
+from backtab.utils.transaction import BacktabTransaction
+
 initial_folders = ["products", "members"]
 initial_structure: dict[str, list[str]] = {
     "products": [],
@@ -51,16 +53,18 @@ def pull_data():
     _ = repo.remotes.origin.pull()
 
 
-def push():
+def push_data():
     log.info("Pushing changes")
     _ = repo.remotes.origin.push()
 
 
 @contextlib.contextmanager
-def commit(transaction: str):
+def commit(transaction: BacktabTransaction):
     try:
         yield
-        _ = repo.commit(transaction)
+        return repo.commit(
+            f"{transaction.group}: {transaction.action} {transaction.message}"
+        )
     except GitCommandError:
         log.error("Could not commit transaction")
         _ = repo.head.reset(index=True, working_tree=True)

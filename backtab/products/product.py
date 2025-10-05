@@ -10,7 +10,7 @@ class BacktabProductPrice(JSONWizard):
 
 @dataclass
 class BacktabProduct(JSONWizard):
-    product_name: str
-    product_price: BacktabProductPrice
-    image: str | None
-    ean: str
+    name: str
+    ean: int
+    price: BacktabProductPrice
+    image: str | None = ""
