@@ -4,7 +4,7 @@ from backtab.config import APP_CONFIG
 from backtab.logger import log
 from pathlib import Path
 
-from backtab.utils.transaction import BacktabTransaction
+from backtab.utils.transaction import BacktabDataUpdate
 
 initial_folders = ["products", "members"]
 initial_structure: dict[str, list[str]] = {
@@ -59,7 +59,7 @@ def push_data():
 
 
 @contextlib.contextmanager
-def commit(transaction: BacktabTransaction):
+def commit(transaction: BacktabDataUpdate):
     try:
         yield
         return repo.commit(

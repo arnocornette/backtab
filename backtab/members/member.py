@@ -4,9 +4,9 @@ from beancount.core.inventory import Inventory
 
 @dataclass
 class BacktabMember:
-    account_name: str
+    name: str
     id: int
-    display_name: str
+    display: str
     pin: str
     inventory: Inventory
     # assuming only members have member definition
