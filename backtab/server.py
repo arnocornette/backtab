@@ -1,5 +1,4 @@
 from backtab.admins.admin_api import admin_router
-from backtab.data_repo import REPO_DATA
 from fastapi import FastAPI
 
 from backtab.products.products_api import products_router
@@ -8,6 +7,7 @@ from backtab.utils.git import pull_data
 api = FastAPI()
 api.include_router(admin_router)
 api.include_router(products_router)
+
 # def json_txn_method(fn: typing.Callable[[typing.Dict], data_repo.Transaction]):
 #     @wraps(fn)
 #     def result():
@@ -64,9 +64,7 @@ api.include_router(products_router)
 
 
 def main():
-    # Load config
     pull_data()
-    REPO_DATA.pull_changes()
 
 
 if __name__ == "__main__":
