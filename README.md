@@ -15,6 +15,7 @@ Then, create the docker VM using:
         -p 4903:4903 \
         -e TAB_DATA_REPO=git@github.com:arnocornette/tab-data \
         -e TEST_MODE=1 \
+        -e tab_data_repo=git@github.com:arnocornette/tab-data \
         --name backtab \
         --init \
         backtab:latest

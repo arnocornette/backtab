@@ -1,4 +1,3 @@
-from backtab.config import SERVER_CONFIG
 import contextlib
 import datetime
 import decimal
@@ -6,13 +5,14 @@ import os.path
 import subprocess
 import threading
 import typing
+from backtab.config import SERVER_CONFIG
 import beancount.core.account as bcacct
 import beancount.core.data as bcdata
 import beancount.core.inventory as bcinv
 import beancount.core.interpolate as bcinterp
 import beancount.loader
 import beancount.parser.printer
-import beancount.query.query
+from beancount.parser.grammar import Builder
 import collections
 import io
 import traceback
@@ -29,8 +29,12 @@ def transaction():
         yield
 
 
-def parse_price(price_str: typing.Union[float, str, decimal.Decimal, int]) -> decimal.Decimal:
-    return decimal.Decimal(price_str).quantize(decimal.Decimal('0.00'), decimal.ROUND_HALF_EVEN)
+def parse_price(
+    price_str: typing.Union[float, str, decimal.Decimal, int],
+) -> decimal.Decimal:
+    return decimal.Decimal(price_str).quantize(
+        decimal.Decimal("0.00"), decimal.ROUND_HALF_EVEN
+    )
 
 
 class UpdateFailed(Exception):
@@ -55,6 +59,7 @@ class Member:
         else:
             self.display_name = self.internal_name = account_parts[-1]
         self.account = account
+        # TODO: Why are we assigning a decimal to an inventory?
         self.balance = decimal.Decimal("0.00")
         self.item_currencies = item_curencies
         self.is_paying_member = False
@@ -62,21 +67,28 @@ class Member:
     @property
     def balance_eur(self):
         return self.balance.get_currency_units("EUR").number.quantize(
-            decimal.Decimal("0.00"), decimal.ROUND_HALF_EVEN)
+            decimal.Decimal("0.00"), decimal.ROUND_HALF_EVEN
+        )
 
     @property
     def item_count(self):
         return sum(
-            int(self.balance.get_currency_units(currency).number.quantize(
-                decimal.Decimal("0"), decimal.ROUND_HALF_EVEN))
+            int(
+                self.balance.get_currency_units(currency).number.quantize(
+                    decimal.Decimal("0"), decimal.ROUND_HALF_EVEN
+                )
+            )
             for currency in self.item_currencies
         )
 
 
-Payback = collections.namedtuple("Payback", {
-    "account": str,
-    "amount": decimal.Decimal,
-})
+Payback = collections.namedtuple(
+    "Payback",
+    {
+        "account": str,
+        "amount": decimal.Decimal,
+    },
+)
 
 
 class Product:
@@ -97,8 +109,14 @@ class Product:
         self.name = definition["name"]
         self.localized_name = definition.get("localized_name", {})
         self.currency = definition["currency"]
-        self.price = parse_price(definition["event_price" if SERVER_CONFIG.EVENT_MODE else "price"])
-        self.paying_member_price = parse_price(definition["paying_member_price"]) if "paying_member_price" in definition else self.price
+        self.price = parse_price(
+            definition["event_price" if SERVER_CONFIG.EVENT_MODE else "price"]
+        )
+        self.paying_member_price = (
+            parse_price(definition["paying_member_price"])
+            if "paying_member_price" in definition
+            else self.price
+        )
         self.category = definition.get("category", "misc")
         self.sort_key = definition.get("sort_key", "%s_%s" % (self.category, self.name))
         if "payback" in definition:
@@ -116,7 +134,7 @@ class Product:
 
     def to_json(self) -> typing.Dict:
         """Return the JSON form for clients. This does not include payback
-         information; that only appears in the input and logs"""
+        information; that only appears in the input and logs"""
         return {
             "name": self.name,
             "localized_name": self.localized_name,
@@ -131,10 +149,12 @@ class Transaction:
     txn: bcdata.Transaction
     primary_account: typing.Optional[Member]
 
-    def __init__(self,
-                 title: str=None,
-                 date: typing.Optional[datetime.datetime]=None,
-                 meta: typing.Optional[typing.Dict[str, str]]=None):
+    def __init__(
+        self,
+        title: str = None,
+        date: typing.Optional[datetime.datetime] = None,
+        meta: typing.Optional[typing.Dict[str, str]] = None,
+    ):
         if meta is None:
             meta = {}
         if date is None:
@@ -148,7 +168,8 @@ class Transaction:
         if title is None:
             raise TypeError("Title must be provided for a transaction")
         self.txn = bcdata.Transaction(
-            meta, date,
+            meta,
+            date,
             flag="txn",
             payee=None,
             narration=title,
@@ -163,97 +184,99 @@ class Transaction:
 
 
 class BuyTxn(Transaction):
-    def __init__(self,
-                 buyer: Member,
-                 products: typing.List[typing.Tuple[Product, int]],
-                 date: typing.Optional[datetime.datetime]=None):
+    def __init__(
+        self,
+        buyer: Member,
+        products: typing.List[typing.Tuple[Product, int]],
+        date: typing.Optional[datetime.datetime] = None,
+    ):
         total_cost = decimal.Decimal("0.00")
         total_count = 0
         for product, count in products:
             total_count += count
-            price = product.paying_member_price if buyer.is_paying_member else product.price
+            price = (
+                product.paying_member_price if buyer.is_paying_member else product.price
+            )
             total_cost += count * price
 
         super(BuyTxn, self).__init__(
-            title="%s bought %d items for €%s" % (
-                buyer.display_name, total_count, total_cost,
+            title="%s bought %d items for €%s"
+            % (
+                buyer.display_name,
+                total_count,
+                total_cost,
             ),
             date=date,
             meta={
                 "type": "purchase",
-            })
+            },
+        )
         self.primary_account = buyer
         charge = decimal.Decimal("0.00")
         paybacks = collections.defaultdict(lambda: decimal.Decimal("0.00"))
 
         for product, qty in products:
-            price = product.paying_member_price if buyer.is_paying_member else product.price
+            price = (
+                product.paying_member_price if buyer.is_paying_member else product.price
+            )
             charge += price * qty
             if product.payback is not None:
-                paybacks[product.payback.account] += \
-                    product.payback.amount * qty
+                paybacks[product.payback.account] += product.payback.amount * qty
             bcdata.create_simple_posting(
-                self.txn, "Assets:Inventory:Bar",
-                -qty, product.currency)
-            bcdata.create_simple_posting(
-                self.txn, buyer.account,
-                qty, product.currency
+                self.txn, "Assets:Inventory:Bar", -qty, product.currency
             )
-        bcdata.create_simple_posting(
-            self.txn, buyer.account,
-            charge, "EUR"
-        )
+            bcdata.create_simple_posting(self.txn, buyer.account, qty, product.currency)
+        bcdata.create_simple_posting(self.txn, buyer.account, charge, "EUR")
         for payee, amt in paybacks.items():
-            bcdata.create_simple_posting(
-                self.txn, payee,
-                -amt, "EUR"
-            )
+            bcdata.create_simple_posting(self.txn, payee, -amt, "EUR")
             charge -= amt
         bcdata.create_simple_posting(
-            self.txn, "Income:Bar",
-            -charge, "EUR",
+            self.txn,
+            "Income:Bar",
+            -charge,
+            "EUR",
         )
 
 
 class TransferTxn(Transaction):
-    def __init__(self,
-                 payer: Member,
-                 payee: Member,
-                 amount: decimal.Decimal,
-                 date: typing.Optional[datetime.datetime]=None):
+    def __init__(
+        self,
+        payer: Member,
+        payee: Member,
+        amount: decimal.Decimal,
+        date: typing.Optional[datetime.datetime] = None,
+    ):
         super(TransferTxn, self).__init__(
-            title="%s gave %s a gift of €%s" % (
-                payer.display_name,
-                payee.display_name,
-                amount),
+            title="%s gave %s a gift of €%s"
+            % (payer.display_name, payee.display_name, amount),
             date=date,
             meta={
-                 "type": "transfer",
-            })
+                "type": "transfer",
+            },
+        )
         self.primary_account = payer
-        bcdata.create_simple_posting(
-            self.txn, payer.account,  amount, "EUR")
-        bcdata.create_simple_posting(
-            self.txn, payee.account, -amount, "EUR")
+        bcdata.create_simple_posting(self.txn, payer.account, amount, "EUR")
+        bcdata.create_simple_posting(self.txn, payee.account, -amount, "EUR")
 
 
 class DepositTxn(Transaction):
-    def __init__(self,
-                 member: Member,
-                 amount: decimal.Decimal,
-                 date: typing.Optional[datetime.datetime]=None):
+    def __init__(
+        self,
+        member: Member,
+        amount: decimal.Decimal,
+        date: typing.Optional[datetime.datetime] = None,
+    ):
         super(DepositTxn, self).__init__(
             title="%s deposited €%s" % (member.display_name, amount),
             date=date,
             meta={
-                 "type": "deposit",
-            })
+                "type": "deposit",
+            },
+        )
 
         self.primary_account = member
-        bcdata.create_simple_posting(
-            self.txn, member.account, -amount, "EUR")
-        bcdata.create_simple_posting(
-            self.txn, CASH_ACCT,  amount, "EUR")
+        bcdata.create_simple_posting(self.txn, member.account, -amount, "EUR")
+        bcdata.create_simple_posting(self.txn, CASH_ACCT, amount, "EUR")
 
 
 class RepoData:
@@ -287,12 +310,13 @@ class RepoData:
         """Pull the latest changes from the upstream git repo"""
         self.synchronized = False
         try:
-            subprocess.run("git pull --no-edit "
-                           "|| ( git merge --abort; false; )",
-                           shell=True,
-                           cwd=self.repo_path,
-                           stderr=subprocess.PIPE,
-                           check=True)
+            subprocess.run(
+                "git pull --no-edit || ( git merge --abort; false; )",
+                shell=True,
+                cwd=self.repo_path,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
         except subprocess.CalledProcessError as e:
             raise UpdateFailed(e.stderr)
 
@@ -312,17 +336,14 @@ class RepoData:
 
     def git_cmd(self, *args):
         print("\x1b[1;31mGit command: \x1b[0m" + " ".join(args))
-        subprocess.run(list(args),
-                       cwd=self.repo_path,
-                       check=True)
+        subprocess.run(list(args), cwd=self.repo_path, check=True)
 
     def add_file(self, filename: str):
         self.git_cmd("git", "add", filename)
 
     @contextlib.contextmanager
     def git_transaction(self):
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"],
-                                       cwd=self.repo_path)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.repo_path)
         head = head.decode("utf-8").strip()
         try:
             yield
@@ -345,6 +366,7 @@ class RepoData:
         while self.instance_ledger_name is None:
             import datetime
             import socket
+
             trial_name = "%(hostname)s_%(date)s.beancount" % {
                 "hostname": socket.gethostname(),
                 "date": datetime.datetime.now(datetime.timezone.utc),
@@ -357,14 +379,19 @@ class RepoData:
                 self.instance_ledger_name = path
             except FileExistsError:
                 import time
+
                 time.sleep(1)
                 continue
         while self.instance_ledger_uncommitted:
             try:
                 # We have an instance ledger; add it to git and push
                 with self.git_transaction():
-                    dynamic_filename = os.path.join(self.repo_path, "ledger", "dynamic.beancount")
-                    include_line = 'include "%s"\n' % os.path.basename(self.instance_ledger_name)
+                    dynamic_filename = os.path.join(
+                        self.repo_path, "ledger", "dynamic.beancount"
+                    )
+                    include_line = 'include "%s"\n' % os.path.basename(
+                        self.instance_ledger_name
+                    )
                     found_include = False
                     with open(dynamic_filename, "rt") as dynamic:
                         for line in dynamic:
@@ -399,7 +426,9 @@ class RepoData:
         while True:
             try:
                 with self.git_transaction():
-                    beancount.parser.printer.print_entry(bc_txn, file=self.instance_ledger)
+                    beancount.parser.printer.print_entry(
+                        bc_txn, file=self.instance_ledger
+                    )
                     self.instance_ledger.flush()
                     self.add_file(self.instance_ledger_name)
             except subprocess.SubprocessError:
@@ -445,19 +474,13 @@ class RepoData:
         accounts = {}
         accounts_raw = {}
         # TODO: Handle this using a realization
-        balances = {
-            row.account: row.balance
-            for row in beancount.query.query.run_query(ledger_data, options, """
-                select account, sum(position) as balance
-                where PARENT(account) = "Liabilities:Bar:Members"
-                   OR account = "Assets:Cash:Bar" 
-                group by account
-                """)[1]
-        }
         for entry in ledger_data:
             if not isinstance(entry, bcdata.Open):
                 continue
-            if not bcacct.parent(entry.account) == "Liabilities:Bar:Members" and entry.account != "Assets:Cash:Bar":
+            if (
+                not bcacct.parent(entry.account) == "Liabilities:Bar:Members"
+                and entry.account != "Assets:Cash:Bar"
+            ):
                 print("Didn't load %s as it's no bar account" % (entry.account,))
                 continue
             acct = Member(entry.account, item_curencies=product_currencies)
@@ -467,7 +490,7 @@ class RepoData:
                 acct.is_paying_member = bool(entry.meta["is_paying_member"])
                 if acct.is_paying_member:
                     acct.display_name += "*"
-            acct.balance = balances.get(acct.account, bcinv.Inventory())
+            acct.balance = None
             accounts[acct.internal_name] = acct
             accounts_raw[acct.account] = acct
 
