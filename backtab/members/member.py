@@ -7,6 +7,7 @@ class BacktabMember:
     account_name: str
     id: int
     display_name: str
-    pin: int
+    pin: str
     inventory: Inventory
+    # assuming only members have member definition
     is_member: bool = False
