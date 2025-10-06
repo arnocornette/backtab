@@ -12,7 +12,6 @@ import beancount.core.inventory as bcinv
 import beancount.core.interpolate as bcinterp
 import beancount.loader
 import beancount.parser.printer
-from beancount.parser.grammar import Builder
 import collections
 import io
 import traceback

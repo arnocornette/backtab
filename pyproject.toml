@@ -12,10 +12,9 @@ dependencies = [
     "click (==8.3.0)",
     "structlog (==25.4.0)",
     "gitpython (==3.1.45)",
-    "fastapi (==0.118.0)",
     "beancount (==3.2.0)",
     "dataclass-wizard (==0.35.1)",
-    "fints (==4.2.4)"
+    "fastapi[standard] (>=0.118.0,<0.119.0)"
     ]
 
 

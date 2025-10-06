@@ -7,13 +7,20 @@ from backtab.utils.git import pull_data, push_data
 admin_router = APIRouter()
 
 
+class HttpStatus:
+    status: str
+
+    def __init__(self, status: str) -> None:
+        self.status = status
+
+
 @admin_router.get("/admin/pull")
 def update():
     pull_data()
-    pass
+    return HttpStatus("OK")
 
 
 @admin_router.get("/admin/push")
 def push():
     push_data()
-    return f""
+    return HttpStatus("OK")
