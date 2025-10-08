@@ -12,5 +12,6 @@ class BacktabProductPrice(JSONWizard):
 class BacktabProduct(JSONWizard):
     name: str
     ean: int
+    code: str
     price: BacktabProductPrice
     image: str | None = ""
