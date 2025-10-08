@@ -48,14 +48,25 @@ def get_or_create_repo(path: str):
 repo = get_or_create_repo(APP_CONFIG.data)
 
 
+@contextlib.contextmanager
 def pull_data():
-    log.info("Pulling changes")
-    _ = repo.remotes.origin.pull()
+    try:
+        yield
+        log.info("Pulling changes")
+        _ = repo.remotes.origin.pull()
+    except GitCommandError:
+        log.error("Could not pull changes")
 
 
+@contextlib.contextmanager
 def push_data():
-    log.info("Pushing changes")
-    _ = repo.remotes.origin.push()
+    try:
+        yield
+        log.info("Pushing changes")
+        _ = repo.remotes.origin.push()
+    except GitCommandError:
+        log.error("Could not push")
+        _ = repo.head.reset(index=True, working_tree=True)
 
 
 @contextlib.contextmanager
