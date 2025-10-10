@@ -16,11 +16,11 @@ class HttpStatus:
 
 @admin_router.get("/admin/pull")
 def update():
-    pull_data()
+    _ = pull_data()
     return HttpStatus("OK")
 
 
 @admin_router.get("/admin/push")
 def push():
-    push_data()
+    _ = push_data()
     return HttpStatus("OK")
