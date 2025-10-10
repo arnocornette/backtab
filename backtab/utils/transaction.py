@@ -5,7 +5,7 @@ import threading
 from typing import Callable
 from backtab.members.member import BacktabMember
 from beancount.core.data import Transaction
-from datetime import datetime,
+from datetime import datetime
 
 repo_lock = threading.RLock()
 
@@ -18,7 +18,6 @@ class BacktabDataUpdate:
 
 
 class BacktabTransaction:
-    txn: Transaction
     primary_account: BacktabMember | None
 
     def __init__(
