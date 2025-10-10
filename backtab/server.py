@@ -64,7 +64,7 @@ api.include_router(products_router)
 
 
 def main():
-    pull_data()
+    _ = pull_data()
 
 
 if __name__ == "__main__":
